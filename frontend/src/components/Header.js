@@ -5,7 +5,7 @@ import { useData } from '../context/DataContext';
 function Header() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isOnline, setIsOnline] = useState(navigator.onLine);
-  const { triggerSync, loading, lastSync, checkHealth } = useData();
+  const { triggerSync, loading, lastSync } = useData();
 
   // Monitor online status
   React.useEffect(() => {

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useData } from '../context/DataContext';
-import { AlertCircle, ExternalLink, Search, Calendar, Tag, MessageCircle } from 'lucide-react';
+import { AlertCircle, ExternalLink, Search, Calendar, Tag } from 'lucide-react';
 
 function IssuesTable() {
   const { issues, loading, fetchIssues } = useData();

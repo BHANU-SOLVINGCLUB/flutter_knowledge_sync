@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useData } from '../context/DataContext';
 import { RefreshCw, CheckCircle, AlertCircle, Clock, Database } from 'lucide-react';
 
@@ -7,11 +7,7 @@ function SyncStatus() {
   const [healthStatus, setHealthStatus] = useState(null);
   const [isCheckingHealth, setIsCheckingHealth] = useState(false);
 
-  useEffect(() => {
-    checkApiHealth();
-  }, []);
-
-  const checkApiHealth = async () => {
+  const checkApiHealth = useCallback(async () => {
     setIsCheckingHealth(true);
     try {
       const health = await checkHealth();
@@ -21,7 +17,11 @@ function SyncStatus() {
     } finally {
       setIsCheckingHealth(false);
     }
-  };
+  }, [checkHealth]);
+
+  useEffect(() => {
+    checkApiHealth();
+  }, [checkApiHealth]);
 
   const handleSync = async () => {
     try {

@@ -9,7 +9,7 @@ import SyncStatus from './SyncStatus';
 import { FileText, Package, AlertCircle, Search, TrendingUp, Clock } from 'lucide-react';
 
 function Dashboard({ tab = 'overview' }) {
-  const { stats, loading, error, lastSync } = useData();
+  const { error } = useData();
   const [activeTab, setActiveTab] = useState(tab);
 
   useEffect(() => {

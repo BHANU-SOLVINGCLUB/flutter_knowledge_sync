@@ -1,6 +1,6 @@
 import React from 'react';
 import { useData } from '../context/DataContext';
-import { FileText, Package, AlertCircle, Database, TrendingUp, Clock } from 'lucide-react';
+import { FileText, Package, AlertCircle, TrendingUp, Clock } from 'lucide-react';
 
 function StatsCards() {
   const { stats, loading, lastSync } = useData();
