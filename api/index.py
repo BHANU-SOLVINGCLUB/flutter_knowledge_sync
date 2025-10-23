@@ -1,5 +1,5 @@
 """
-Vercel-compatible FastAPI server
+Vercel-compatible FastAPI server - Simplified version
 """
 import os
 import logging
@@ -7,21 +7,6 @@ from typing import Optional
 
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
-
-# Initialize Supabase client
-try:
-    from supabase import create_client
-    SUPABASE_URL = os.getenv('SUPABASE_URL', 'https://lthfkjiggwawxdjzzqee.supabase.co')
-    SUPABASE_KEY = os.getenv('SUPABASE_KEY', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx0aGZramlnZ3dhd3hkanp6cWVlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjEyMzU1MzcsImV4cCI6MjA3NjgxMTUzN30.EOd-1rd0O9PPChSAyzDltMsoN3d1qF1dPzOTJlnyd5E')
-    
-    if SUPABASE_URL and SUPABASE_KEY:
-        supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
-    else:
-        supabase = None
-        logging.warning('Supabase credentials not configured')
-except Exception as e:
-    supabase = None
-    logging.error(f'Failed to initialize Supabase: {e}')
 
 # Create FastAPI app
 app = FastAPI(
@@ -39,6 +24,22 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Initialize Supabase client with error handling
+supabase = None
+try:
+    from supabase import create_client
+    SUPABASE_URL = os.getenv('SUPABASE_URL', 'https://lthfkjiggwawxdjzzqee.supabase.co')
+    SUPABASE_KEY = os.getenv('SUPABASE_KEY', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx0aGZramlnZ3dhd3hkanp6cWVlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjEyMzU1MzcsImV4cCI6MjA3NjgxMTUzN30.EOd-1rd0O9PPChSAyzDltMsoN3d1qF1dPzOTJlnyd5E')
+    
+    if SUPABASE_URL and SUPABASE_KEY:
+        supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+        logging.info("Supabase client initialized successfully")
+    else:
+        logging.warning("Supabase credentials not configured")
+except Exception as e:
+    logging.error(f'Failed to initialize Supabase: {e}')
+    supabase = None
+
 @app.get('/')
 def root():
     """Root endpoint"""
@@ -46,6 +47,7 @@ def root():
         'message': 'Flutter Knowledge Sync API',
         'version': '1.0.0',
         'status': 'running',
+        'supabase_connected': supabase is not None,
         'endpoints': [
             '/health',
             '/api/flutter/docs',
