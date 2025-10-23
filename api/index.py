@@ -1,16 +1,14 @@
 """
 Vercel-compatible FastAPI server
 """
-import sys
 import os
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import logging
+from typing import Optional
 
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
-import os, logging
-from typing import Optional
 
-# Import Supabase client with environment variables
+# Initialize Supabase client
 try:
     from supabase import create_client
     SUPABASE_URL = os.getenv('SUPABASE_URL', 'https://lthfkjiggwawxdjzzqee.supabase.co')
@@ -25,7 +23,7 @@ except Exception as e:
     supabase = None
     logging.error(f'Failed to initialize Supabase: {e}')
 
-LOG = logging.getLogger(__name__)
+# Create FastAPI app
 app = FastAPI(
     title='Flutter Knowledge API',
     description='API for accessing Flutter documentation, packages, and GitHub issues',
@@ -35,11 +33,27 @@ app = FastAPI(
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Configure this properly for production
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.get('/')
+def root():
+    """Root endpoint"""
+    return {
+        'message': 'Flutter Knowledge Sync API',
+        'version': '1.0.0',
+        'status': 'running',
+        'endpoints': [
+            '/health',
+            '/api/flutter/docs',
+            '/api/flutter/packages', 
+            '/api/flutter/issues',
+            '/api/flutter/search'
+        ]
+    }
 
 @app.get('/health')
 def health():
@@ -73,7 +87,32 @@ def get_docs(
             'search': search
         }
     except Exception as e:
-        LOG.exception("Error fetching docs: %s", e)
+        logging.exception("Error fetching docs: %s", e)
+        raise HTTPException(status_code=500, detail='Internal server error')
+
+@app.get('/api/flutter/packages')
+def get_packages(
+    limit: int = Query(50, ge=1, le=100, description="Number of packages to return"),
+    search: Optional[str] = Query(None, description="Search in package name and description")
+):
+    """Get Flutter packages from pub.dev"""
+    if supabase is None:
+        raise HTTPException(status_code=503, detail='Supabase not configured')
+    
+    try:
+        query = supabase.table('pub_packages').select('*')
+        
+        if search:
+            query = query.or_(f'name.ilike.%{search}%,description.ilike.%{search}%')
+        
+        res = query.order('updated_at', desc=True).limit(limit).execute()
+        return {
+            'data': res.data,
+            'count': len(res.data),
+            'search': search
+        }
+    except Exception as e:
+        logging.exception("Error fetching packages: %s", e)
         raise HTTPException(status_code=500, detail='Internal server error')
 
 @app.get('/api/flutter/issues')
@@ -100,32 +139,7 @@ def get_issues(
             'labels_filter': labels
         }
     except Exception as e:
-        LOG.exception("Error fetching issues: %s", e)
-        raise HTTPException(status_code=500, detail='Internal server error')
-
-@app.get('/api/flutter/packages')
-def get_packages(
-    limit: int = Query(50, ge=1, le=100, description="Number of packages to return"),
-    search: Optional[str] = Query(None, description="Search in package name and description")
-):
-    """Get Flutter packages from pub.dev"""
-    if supabase is None:
-        raise HTTPException(status_code=503, detail='Supabase not configured')
-    
-    try:
-        query = supabase.table('pub_packages').select('*')
-        
-        if search:
-            query = query.or_(f'name.ilike.%{search}%,description.ilike.%{search}%')
-        
-        res = query.order('updated_at', desc=True).limit(limit).execute()
-        return {
-            'data': res.data,
-            'count': len(res.data),
-            'search': search
-        }
-    except Exception as e:
-        LOG.exception("Error fetching packages: %s", e)
+        logging.exception("Error fetching issues: %s", e)
         raise HTTPException(status_code=500, detail='Internal server error')
 
 @app.get('/api/flutter/search')
@@ -164,7 +178,7 @@ def search_all(
             'total_results': len(results['docs']) + len(results['packages']) + len(results['issues'])
         }
     except Exception as e:
-        LOG.exception("Error searching: %s", e)
+        logging.exception("Error searching: %s", e)
         raise HTTPException(status_code=500, detail='Internal server error')
 
 # Vercel handler
