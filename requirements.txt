@@ -1,0 +1,13 @@
+fastapi
+uvicorn[standard]
+supabase
+requests
+python-dotenv
+APScheduler
+PyGithub
+pydantic
+httpx
+openai
+psycopg2-binary
+beautifulsoup4
+lxml

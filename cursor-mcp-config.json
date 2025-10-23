@@ -1,0 +1,30 @@
+{
+  "mcp": {
+    "sources": [
+      {
+        "name": "flutter-knowledge-sync",
+        "description": "Flutter documentation, packages, and GitHub issues knowledge base",
+        "type": "rest",
+        "baseUrl": "http://localhost:8000",
+        "endpoints": {
+          "search": "/api/flutter/search",
+          "docs": "/api/flutter/docs",
+          "packages": "/api/flutter/packages",
+          "issues": "/api/flutter/issues",
+          "health": "/health"
+        },
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "searchParams": {
+          "limit": 20
+        }
+      }
+    ],
+    "settings": {
+      "cacheTimeout": 300,
+      "maxResults": 50,
+      "enableSummarization": true
+    }
+  }
+}

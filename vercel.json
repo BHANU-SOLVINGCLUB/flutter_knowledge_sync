@@ -1,0 +1,22 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "api/server.py",
+      "use": "@vercel/python"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "api/server.py"
+    }
+  ],
+  "env": {
+    "SUPABASE_URL": "@supabase_url",
+    "SUPABASE_KEY": "@supabase_key",
+    "GEMINI_API_KEY": "@gemini_api_key",
+    "GITHUB_TOKEN": "@github_token",
+    "SYNC_INTERVAL_MINUTES": "360"
+  }
+}
