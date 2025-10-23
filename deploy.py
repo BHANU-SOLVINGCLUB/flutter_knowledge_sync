@@ -43,7 +43,7 @@ def setup_environment():
         'SYNC_INTERVAL_MINUTES': '360'
     }
     
-    print("Environment variables to set in Vercel:")
+    print("Environment variables to set in aVercel:")
     for key, value in env_vars.items():
         if value:
             print(f"  {key}: {value}")
