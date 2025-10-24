@@ -6,6 +6,7 @@ import PackagesTable from './PackagesTable';
 import IssuesTable from './IssuesTable';
 import SearchResults from './SearchResults';
 import SyncStatus from './SyncStatus';
+import PerformanceMonitor from './PerformanceMonitor';
 import { FileText, Package, AlertCircle, Search, TrendingUp, Clock } from 'lucide-react';
 
 function Dashboard({ tab = 'overview' }) {
@@ -30,9 +31,10 @@ function Dashboard({ tab = 'overview' }) {
         return (
           <div className="space-y-6">
             <StatsCards />
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               <SyncStatus />
               <RecentActivity />
+              <PerformanceMonitor />
             </div>
           </div>
         );

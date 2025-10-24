@@ -1,14 +1,16 @@
 # Flutter Knowledge Sync
 
-A comprehensive Python service that aggregates Flutter documentation, packages, and GitHub issues into a searchable knowledge base. Perfect for AI-powered development tools like Cursor.
+A production-ready Python service that aggregates Flutter documentation, packages, and GitHub issues into a comprehensive, searchable knowledge base. Perfect for AI-powered development tools like Cursor.
 
 ## 🚀 Features
 
 - **Multi-source Data Collection**: Fetches from Flutter docs, pub.dev packages, and GitHub issues
 - **Smart Summarization**: Optional OpenAI integration for concise content summaries
-- **FastAPI REST API**: Full-featured API with search, filtering, and pagination
+- **FastAPI REST API**: Production-ready API with search, filtering, pagination, and rate limiting
 - **Background Sync**: Automated data synchronization with configurable intervals
-- **Supabase Integration**: Robust database storage with upsert operations
+- **Supabase Integration**: Robust database storage with upsert operations and RLS
+- **React Dashboard**: Modern, responsive dashboard with real-time data visualization
+- **Production Ready**: Comprehensive error handling, logging, monitoring, and security
 - **Docker Ready**: Production-ready containerization with health checks
 - **MCP Compatible**: Designed to work as a Model Context Protocol source for Cursor
 
@@ -142,35 +144,39 @@ The app creates three main tables:
 
 ## 🚀 Deployment
 
-### Render (Recommended)
+### Vercel (Recommended)
 
-1. Connect your GitHub repository to Render
-2. Create a new Web Service
-3. Set environment variables in Render dashboard
-4. Deploy!
+1. **Fork/Clone the repository**
+2. **Set up environment variables in Vercel dashboard**
+3. **Deploy with one command:**
+   ```bash
+   vercel --prod
+   ```
 
-### Railway
+### Other Platforms
 
-```bash
-# Install Railway CLI
-npm install -g @railway/cli
+- **Railway**: Connect GitHub repo and deploy automatically
+- **Render**: Create Web Service and configure environment variables
+- **Fly.io**: Use `fly launch` and `fly deploy`
 
-# Deploy
-railway login
-railway init
-railway up
-```
+### Production Testing
 
-### Fly.io
+Before deploying to production, run the comprehensive test suite:
 
 ```bash
-# Install flyctl
-curl -L https://fly.io/install.sh | sh
-
-# Deploy
-fly launch
-fly deploy
+python test_production.py
 ```
+
+This tests:
+- ✅ API health and connectivity
+- ✅ Data endpoints functionality
+- ✅ Search functionality
+- ✅ Pagination support
+- ✅ Error handling
+- ✅ Performance requirements
+- ✅ CORS configuration
+
+For detailed deployment instructions, see [PRODUCTION_DEPLOYMENT_GUIDE.md](PRODUCTION_DEPLOYMENT_GUIDE.md)
 
 ## 🔗 Cursor Integration
 

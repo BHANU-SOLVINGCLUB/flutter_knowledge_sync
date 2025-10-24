@@ -3,15 +3,31 @@ import { useData } from '../context/DataContext';
 import { Search, FileText, Package, AlertCircle, ExternalLink, Clock } from 'lucide-react';
 
 function SearchResults() {
-  const { searchResults, loading, searchAll } = useData();
+  const { searchResults, loading, searchAll, error, clearError } = useData();
   const [searchQuery, setSearchQuery] = useState('');
   const [hasSearched, setHasSearched] = useState(false);
+  const [searchHistory, setSearchHistory] = useState([]);
 
   const handleSearch = async () => {
     if (searchQuery.trim()) {
       setHasSearched(true);
-      await searchAll(searchQuery.trim());
+      clearError();
+      
+      // Add to search history
+      const trimmedQuery = searchQuery.trim();
+      if (!searchHistory.includes(trimmedQuery)) {
+        setSearchHistory(prev => [trimmedQuery, ...prev.slice(0, 4)]); // Keep last 5 searches
+      }
+      
+      await searchAll(trimmedQuery);
     }
+  };
+
+  const handleHistoryClick = (query) => {
+    setSearchQuery(query);
+    setHasSearched(true);
+    clearError();
+    searchAll(query);
   };
 
   const handleKeyPress = (e) => {
@@ -185,6 +201,20 @@ function SearchResults() {
       {/* Search Header */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
         <h2 className="text-lg font-semibold text-gray-900 mb-4">Search Flutter Knowledge</h2>
+        
+        {/* Error Display */}
+        {error && (
+          <div className="mb-4 bg-red-50 border border-red-200 rounded-lg p-4">
+            <div className="flex">
+              <AlertCircle className="h-5 w-5 text-red-400 flex-shrink-0" />
+              <div className="ml-3">
+                <h3 className="text-sm font-medium text-red-800">Search Error</h3>
+                <div className="mt-2 text-sm text-red-700">{error}</div>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="flex items-center space-x-3">
           <div className="flex-1 relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
@@ -205,6 +235,24 @@ function SearchResults() {
             {loading.search ? 'Searching...' : 'Search'}
           </button>
         </div>
+
+        {/* Search History */}
+        {searchHistory.length > 0 && (
+          <div className="mt-4">
+            <p className="text-sm text-gray-600 mb-2">Recent searches:</p>
+            <div className="flex flex-wrap gap-2">
+              {searchHistory.map((query, index) => (
+                <button
+                  key={index}
+                  onClick={() => handleHistoryClick(query)}
+                  className="px-3 py-1 text-sm bg-gray-100 text-gray-700 rounded-full hover:bg-gray-200 transition-colors"
+                >
+                  {query}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Search Results */}
