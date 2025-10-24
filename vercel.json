@@ -3,7 +3,18 @@
   "builds": [
     {
       "src": "api/index.py",
-      "use": "@vercel/python"
+      "use": "@vercel/python",
+      "config": {
+        "maxLambdaSize": "50mb",
+        "maxDuration": 30
+      }
+    },
+    {
+      "src": "frontend/package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "build"
+      }
     }
   ],
   "routes": [
@@ -13,7 +24,10 @@
     },
     {
       "src": "/(.*)",
-      "dest": "/index.html"
+      "dest": "frontend/build/$1"
     }
-  ]
+  ],
+  "env": {
+    "ENVIRONMENT": "production"
+  }
 }
