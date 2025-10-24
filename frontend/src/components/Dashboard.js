@@ -1,171 +1,117 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { useData } from '../context/DataContext';
-import StatsCards from './StatsCards';
-import DocsTable from './DocsTable';
-import PackagesTable from './PackagesTable';
-import IssuesTable from './IssuesTable';
-import SearchResults from './SearchResults';
-import SyncStatus from './SyncStatus';
-import PerformanceMonitor from './PerformanceMonitor';
-import { FileText, Package, AlertCircle, Search, TrendingUp, Clock } from 'lucide-react';
+import { BookOpen, Package, AlertCircle, TrendingUp } from 'lucide-react';
 
-function Dashboard({ tab = 'overview' }) {
-  const { error } = useData();
-  const [activeTab, setActiveTab] = useState(tab);
+function Dashboard() {
+  const { stats, loading } = useData();
 
-  useEffect(() => {
-    setActiveTab(tab);
-  }, [tab]);
-
-  const tabs = [
-    { id: 'overview', name: 'Overview', icon: TrendingUp },
-    { id: 'docs', name: 'Documentation', icon: FileText },
-    { id: 'packages', name: 'Packages', icon: Package },
-    { id: 'issues', name: 'GitHub Issues', icon: AlertCircle },
-    { id: 'search', name: 'Search', icon: Search },
+  const statCards = [
+    {
+      title: 'Documentation',
+      value: stats.total_docs,
+      icon: BookOpen,
+      color: '#3b82f6',
+      description: 'Flutter documentation entries'
+    },
+    {
+      title: 'Packages',
+      value: stats.total_packages,
+      icon: Package,
+      color: '#10b981',
+      description: 'Pub.dev packages'
+    },
+    {
+      title: 'Issues',
+      value: stats.total_issues,
+      icon: AlertCircle,
+      color: '#f59e0b',
+      description: 'GitHub issues'
+    },
+    {
+      title: 'Total Resources',
+      value: stats.total_docs + stats.total_packages + stats.total_issues,
+      icon: TrendingUp,
+      color: '#8b5cf6',
+      description: 'All Flutter resources'
+    }
   ];
 
-  const renderContent = () => {
-    switch (activeTab) {
-      case 'overview':
-        return (
-          <div className="space-y-6">
-            <StatsCards />
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <SyncStatus />
-              <RecentActivity />
-              <PerformanceMonitor />
-            </div>
-          </div>
-        );
-      case 'docs':
-        return <DocsTable />;
-      case 'packages':
-        return <PackagesTable />;
-      case 'issues':
-        return <IssuesTable />;
-      case 'search':
-        return <SearchResults />;
-      default:
-        return <StatsCards />;
-    }
-  };
-
   return (
-    <div className="pt-6">
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">
-          Flutter Knowledge Dashboard
-        </h1>
-        <p className="text-gray-600">
-          Manage and explore Flutter documentation, packages, and community insights
+    <div className="dashboard">
+      <div className="dashboard-header">
+        <h1 className="dashboard-title">Flutter Knowledge Dashboard</h1>
+        <p className="dashboard-subtitle">
+          Explore comprehensive Flutter documentation, packages, and community resources
+          in one centralized platform.
         </p>
       </div>
 
-      {/* Error Display */}
-      {error && (
-        <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4">
-          <div className="flex">
-            <div className="flex-shrink-0">
-              <AlertCircle className="h-5 w-5 text-red-400" />
-            </div>
-            <div className="ml-3">
-              <h3 className="text-sm font-medium text-red-800">Error</h3>
-              <div className="mt-2 text-sm text-red-700">{error}</div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Tab Navigation */}
-      <div className="mb-8">
-        <div className="border-b border-gray-200">
-          <nav className="-mb-px flex space-x-8">
-            {tabs.map((tab) => {
-              const isActive = activeTab === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`group inline-flex items-center py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
-                    isActive
-                      ? 'border-blue-500 text-blue-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
-                >
-                  <tab.icon
-                    className={`mr-2 w-4 h-4 ${
-                      isActive ? 'text-blue-500' : 'text-gray-400 group-hover:text-gray-500'
-                    }`}
-                  />
-                  {tab.name}
-                </button>
-              );
-            })}
-          </nav>
-        </div>
-      </div>
-
-      {/* Content */}
-      <div className="animate-fade-in">
-        {renderContent()}
-      </div>
-    </div>
-  );
-}
-
-// Recent Activity Component
-function RecentActivity() {
-  const { lastSync } = useData();
-  
-  const activities = [
-    {
-      id: 1,
-      type: 'sync',
-      message: 'Data synchronization completed',
-      timestamp: lastSync,
-      icon: Clock,
-    },
-    {
-      id: 2,
-      type: 'docs',
-      message: '4 Flutter documentation pages updated',
-      timestamp: lastSync,
-      icon: FileText,
-    },
-    {
-      id: 3,
-      type: 'packages',
-      message: '10 packages fetched from pub.dev',
-      timestamp: lastSync,
-      icon: Package,
-    },
-  ];
-
-  const formatTimestamp = (timestamp) => {
-    if (!timestamp) return 'Never';
-    const date = new Date(timestamp);
-    return date.toLocaleString();
-  };
-
-  return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-      <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Activity</h3>
-      <div className="space-y-4">
-        {activities.map((activity) => (
-          <div key={activity.id} className="flex items-start space-x-3">
-            <div className="flex-shrink-0">
-              <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                <activity.icon className="w-4 h-4 text-blue-600" />
+      <div className="stats-grid">
+        {statCards.map((card, index) => {
+          const Icon = card.icon;
+          return (
+            <div key={index} className="stat-card">
+              <div 
+                className="stat-icon"
+                style={{ backgroundColor: `${card.color}20`, color: card.color }}
+              >
+                <Icon size={24} />
+              </div>
+              <div className="stat-number">
+                {loading.stats ? (
+                  <div className="loading-spinner" />
+                ) : (
+                  card.value.toLocaleString()
+                )}
+              </div>
+              <div className="stat-label">{card.title}</div>
+              <div style={{ fontSize: '0.875rem', color: '#94a3b8', marginTop: '0.5rem' }}>
+                {card.description}
               </div>
             </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-gray-900">{activity.message}</p>
-              <p className="text-sm text-gray-500">{formatTimestamp(activity.timestamp)}</p>
+          );
+        })}
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="card">
+          <h3 style={{ fontSize: '1.25rem', fontWeight: '600', marginBottom: '1rem', color: '#1e293b' }}>
+            Quick Access
+          </h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            <a href="/docs" className="btn btn-secondary" style={{ textAlign: 'left', justifyContent: 'flex-start' }}>
+              📚 Browse Documentation
+            </a>
+            <a href="/packages" className="btn btn-secondary" style={{ textAlign: 'left', justifyContent: 'flex-start' }}>
+              📦 Explore Packages
+            </a>
+            <a href="/issues" className="btn btn-secondary" style={{ textAlign: 'left', justifyContent: 'flex-start' }}>
+              🐛 View Issues
+            </a>
+            <a href="/search" className="btn btn-primary" style={{ textAlign: 'left', justifyContent: 'flex-start' }}>
+              🔍 Search Everything
+            </a>
+          </div>
+        </div>
+
+        <div className="card">
+          <h3 style={{ fontSize: '1.25rem', fontWeight: '600', marginBottom: '1rem', color: '#1e293b' }}>
+            About This Dashboard
+          </h3>
+          <p style={{ color: '#64748b', lineHeight: '1.6' }}>
+            This dashboard provides a centralized view of Flutter resources including 
+            official documentation, community packages, and GitHub issues. Use the 
+            search functionality to quickly find what you need.
+          </p>
+          <div style={{ marginTop: '1rem', padding: '1rem', backgroundColor: '#f8fafc', borderRadius: '0.5rem' }}>
+            <div style={{ fontSize: '0.875rem', color: '#64748b' }}>
+              <strong>Last Updated:</strong> {new Date().toLocaleDateString()}
+            </div>
+            <div style={{ fontSize: '0.875rem', color: '#64748b', marginTop: '0.25rem' }}>
+              <strong>API Status:</strong> <span style={{ color: '#10b981' }}>🟢 Online</span>
             </div>
           </div>
-        ))}
+        </div>
       </div>
     </div>
   );

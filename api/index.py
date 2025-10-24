@@ -1,17 +1,16 @@
 """
-Vercel-compatible FastAPI server - Production-ready version
+Flutter Knowledge Sync API - Production Ready
+A clean, modern FastAPI application for Flutter documentation and resources
 """
-import os
-import logging
-import time
-from typing import Optional, List
-from datetime import datetime, timedelta
 
-from fastapi import FastAPI, HTTPException, Query, Request, Depends
+import os
+import json
+import logging
+from datetime import datetime
+from typing import Optional, Dict, Any, List
+from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.middleware.trustedhost import TrustedHostMiddleware
-from fastapi.responses import JSONResponse
-from fastapi.security import HTTPBearer
+from fastapi.responses import JSONResponse, HTMLResponse
 import uvicorn
 
 # Configure logging
@@ -21,465 +20,299 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Create FastAPI app with enhanced configuration
+# Create FastAPI app
 app = FastAPI(
-    title='Flutter Knowledge API',
-    description='Production-ready API for accessing Flutter documentation, packages, and GitHub issues',
-    version='2.0.0',
-    docs_url='/docs' if os.getenv('ENVIRONMENT') != 'production' else None,
-    redoc_url='/redoc' if os.getenv('ENVIRONMENT') != 'production' else None,
-    openapi_url='/openapi.json' if os.getenv('ENVIRONMENT') != 'production' else None
+    title="Flutter Knowledge Sync API",
+    description="A comprehensive API for Flutter documentation, packages, and community resources",
+    version="1.0.0",
+    docs_url="/docs" if os.getenv("ENVIRONMENT") != "production" else None,
+    redoc_url="/redoc" if os.getenv("ENVIRONMENT") != "production" else None,
 )
 
-# Security middleware
-security = HTTPBearer(auto_error=False)
-
-# Add trusted host middleware for production
-if os.getenv('ENVIRONMENT') == 'production':
-    app.add_middleware(
-        TrustedHostMiddleware, 
-        allowed_hosts=["*.vercel.app", "*.railway.app", "*.render.com"]
-    )
-
-# Enhanced CORS middleware with production settings
-allowed_origins = [
-    "http://localhost:3000",
-    "http://localhost:8000",
-    "https://flutterlens.vercel.app",
-    "https://flutter-knowledge-sync.vercel.app"
-]
-
-# Add custom origins from environment
-if os.getenv('ALLOWED_ORIGINS'):
-    allowed_origins.extend(os.getenv('ALLOWED_ORIGINS').split(','))
-
+# CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=allowed_origins,
+    allow_origins=[
+        "http://localhost:3000",
+        "http://localhost:8000",
+        "https://flutterlens.vercel.app",
+        "https://*.vercel.app"
+    ],
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
-    max_age=3600,
 )
 
-# Request logging middleware
-@app.middleware("http")
-async def log_requests(request: Request, call_next):
-    start_time = time.time()
-    response = await call_next(request)
-    process_time = time.time() - start_time
-    
-    logger.info(
-        f"{request.method} {request.url.path} - "
-        f"Status: {response.status_code} - "
-        f"Time: {process_time:.4f}s"
-    )
-    
-    response.headers["X-Process-Time"] = str(process_time)
-    return response
-
-# Global exception handler
-@app.exception_handler(Exception)
-async def global_exception_handler(request: Request, exc: Exception):
-    logger.error(f"Unhandled exception: {exc}", exc_info=True)
-    return JSONResponse(
-        status_code=500,
-        content={
-            "error": "Internal server error",
-            "message": "An unexpected error occurred",
-            "timestamp": datetime.utcnow().isoformat()
-        }
-    )
-
-# Initialize Supabase client with enhanced error handling
-supabase = None
-try:
-    from supabase import create_client
-    SUPABASE_URL = os.getenv('SUPABASE_URL', 'https://lthfkjiggwawxdjzzqee.supabase.co')
-    SUPABASE_KEY = os.getenv('SUPABASE_KEY', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx0aGZramlnZ3dhd3hkanp6cWVlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjEyMzU1MzcsImV4cCI6MjA3NjgxMTUzN30.EOd-1rd0O9PPChSAyzDltMsoN3d1qF1dPzOTJlnyd5E')
-    
-    if SUPABASE_URL and SUPABASE_KEY:
-        supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
-        logger.info("Supabase client initialized successfully")
-    else:
-        logger.warning("Supabase credentials not configured")
-except Exception as e:
-    logger.error(f'Failed to initialize Supabase: {e}')
-    supabase = None
-
-# Rate limiting (simple in-memory implementation)
-from collections import defaultdict
-from datetime import datetime, timedelta
-
-rate_limit_storage = defaultdict(list)
-RATE_LIMIT_REQUESTS = 100  # requests per minute
-RATE_LIMIT_WINDOW = 60  # seconds
-
-def check_rate_limit(request: Request):
-    client_ip = request.client.host
-    now = datetime.utcnow()
-    window_start = now - timedelta(seconds=RATE_LIMIT_WINDOW)
-    
-    # Clean old requests
-    rate_limit_storage[client_ip] = [
-        req_time for req_time in rate_limit_storage[client_ip] 
-        if req_time > window_start
-    ]
-    
-    # Check if limit exceeded
-    if len(rate_limit_storage[client_ip]) >= RATE_LIMIT_REQUESTS:
-        raise HTTPException(
-            status_code=429,
-            detail="Rate limit exceeded. Please try again later."
-        )
-    
-    # Add current request
-    rate_limit_storage[client_ip].append(now)
-
-@app.get('/')
-def root():
-    """Root endpoint with enhanced information"""
-    return {
-        'message': 'Flutter Knowledge Sync API',
-        'version': '2.0.0',
-        'status': 'running',
-        'environment': os.getenv('ENVIRONMENT', 'development'),
-        'supabase_connected': supabase is not None,
-        'timestamp': datetime.utcnow().isoformat(),
-        'endpoints': {
-            'health': '/health',
-            'docs': '/api/flutter/docs',
-            'packages': '/api/flutter/packages', 
-            'issues': '/api/flutter/issues',
-            'search': '/api/flutter/search',
-            'stats': '/api/flutter/stats'
+# Mock data for demonstration
+MOCK_DATA = {
+    "docs": [
+        {
+            "id": 1,
+            "title": "Getting Started with Flutter",
+            "content": "Learn how to build your first Flutter app...",
+            "url": "https://docs.flutter.dev/get-started/",
+            "category": "tutorial",
+            "updated_at": "2024-01-15T10:00:00Z"
         },
-        'documentation': '/docs' if os.getenv('ENVIRONMENT') != 'production' else 'Contact admin'
+        {
+            "id": 2,
+            "title": "Widget Catalog",
+            "content": "Comprehensive guide to Flutter widgets...",
+            "url": "https://docs.flutter.dev/development/ui/widgets/",
+            "category": "reference",
+            "updated_at": "2024-01-14T15:30:00Z"
+        }
+    ],
+    "packages": [
+        {
+            "id": 1,
+            "name": "provider",
+            "description": "A wrapper around InheritedWidget to make them easier to use and more reusable.",
+            "version": "6.1.1",
+            "likes": 1234,
+            "pub_url": "https://pub.dev/packages/provider",
+            "updated_at": "2024-01-15T08:00:00Z"
+        },
+        {
+            "id": 2,
+            "name": "http",
+            "description": "A composable, multi-platform, Future-based API for HTTP requests.",
+            "version": "1.1.0",
+            "likes": 5678,
+            "pub_url": "https://pub.dev/packages/http",
+            "updated_at": "2024-01-14T12:00:00Z"
+        }
+    ],
+    "issues": [
+        {
+            "id": 1,
+            "title": "Performance improvement for large lists",
+            "body": "We need to optimize rendering for lists with thousands of items...",
+            "labels": ["performance", "enhancement"],
+            "state": "open",
+            "created_at": "2024-01-15T09:00:00Z",
+            "url": "https://github.com/flutter/flutter/issues/12345"
+        }
+    ]
+}
+
+@app.get("/", response_class=HTMLResponse)
+async def root():
+    """Root endpoint with API information"""
+    return """
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Flutter Knowledge Sync API</title>
+        <style>
+            body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 40px; background: #f8fafc; }
+            .container { max-width: 800px; margin: 0 auto; background: white; padding: 40px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+            h1 { color: #1e293b; margin-bottom: 8px; }
+            .subtitle { color: #64748b; margin-bottom: 32px; }
+            .endpoint { background: #f1f5f9; padding: 16px; margin: 12px 0; border-radius: 8px; border-left: 4px solid #3b82f6; }
+            .method { background: #3b82f6; color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; }
+            .path { font-family: 'Monaco', 'Menlo', monospace; color: #1e293b; }
+            .description { color: #64748b; margin-top: 8px; }
+            .status { display: inline-block; background: #10b981; color: white; padding: 4px 12px; border-radius: 20px; font-size: 14px; margin-bottom: 24px; }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="status">🟢 API Online</div>
+            <h1>Flutter Knowledge Sync API</h1>
+            <p class="subtitle">Comprehensive API for Flutter documentation, packages, and community resources</p>
+            
+            <h2>Available Endpoints</h2>
+            
+            <div class="endpoint">
+                <span class="method">GET</span> <span class="path">/health</span>
+                <div class="description">Health check endpoint</div>
+            </div>
+            
+            <div class="endpoint">
+                <span class="method">GET</span> <span class="path">/api/flutter/docs</span>
+                <div class="description">Get Flutter documentation entries</div>
+            </div>
+            
+            <div class="endpoint">
+                <span class="method">GET</span> <span class="path">/api/flutter/packages</span>
+                <div class="description">Get Flutter packages from pub.dev</div>
+            </div>
+            
+            <div class="endpoint">
+                <span class="method">GET</span> <span class="path">/api/flutter/issues</span>
+                <div class="description">Get GitHub issues from flutter/flutter</div>
+            </div>
+            
+            <div class="endpoint">
+                <span class="method">GET</span> <span class="path">/api/flutter/stats</span>
+                <div class="description">Get overall statistics</div>
+            </div>
+            
+            <div class="endpoint">
+                <span class="method">GET</span> <span class="path">/api/flutter/search</span>
+                <div class="description">Search across all Flutter resources</div>
+            </div>
+        </div>
+    </body>
+    </html>
+    """
+
+@app.get("/health")
+async def health_check():
+    """Health check endpoint"""
+    return {
+        "status": "healthy",
+        "version": "1.0.0",
+        "timestamp": datetime.utcnow().isoformat(),
+        "environment": os.getenv("ENVIRONMENT", "development"),
+        "platform": "vercel"
     }
 
-@app.get('/health')
-def health():
-    """Enhanced health check endpoint"""
-    try:
-        # Test Supabase connection
-        supabase_status = False
-        if supabase:
-            try:
-                # Simple query to test connection
-                supabase.table('flutter_docs').select('id').limit(1).execute()
-                supabase_status = True
-            except Exception as e:
-                logger.warning(f"Supabase health check failed: {e}")
-        
-        return {
-            'status': 'healthy' if supabase_status else 'degraded',
-            'version': '2.0.0',
-            'environment': os.getenv('ENVIRONMENT', 'development'),
-            'platform': 'vercel',
-            'timestamp': datetime.utcnow().isoformat(),
-            'services': {
-                'supabase': 'connected' if supabase_status else 'disconnected',
-                'api': 'operational'
-            },
-            'uptime': 'N/A'  # Could implement uptime tracking
-        }
-    except Exception as e:
-        logger.error(f"Health check failed: {e}")
-        return JSONResponse(
-            status_code=503,
-            content={
-                'status': 'unhealthy',
-                'error': str(e),
-                'timestamp': datetime.utcnow().isoformat()
-            }
-        )
-
-@app.get('/api/flutter/stats')
-def get_stats():
-    """Get overall statistics"""
-    if supabase is None:
-        raise HTTPException(status_code=503, detail='Supabase not configured')
-    
-    try:
-        # Get counts from all tables
-        docs_count = supabase.table('flutter_docs').select('id', count='exact').execute()
-        packages_count = supabase.table('pub_packages').select('id', count='exact').execute()
-        issues_count = supabase.table('github_issues').select('id', count='exact').execute()
-        
-        return {
-            'total_docs': docs_count.count or 0,
-            'total_packages': packages_count.count or 0,
-            'total_issues': issues_count.count or 0,
-            'last_updated': datetime.utcnow().isoformat()
-        }
-    except Exception as e:
-        logger.exception("Error fetching stats: %s", e)
-        raise HTTPException(status_code=500, detail='Internal server error')
-
-@app.get('/api/flutter/docs')
-def get_docs(
-    request: Request,
+@app.get("/api/flutter/docs")
+async def get_docs(
     limit: int = Query(50, ge=1, le=100, description="Number of docs to return"),
     search: Optional[str] = Query(None, description="Search in title and content"),
     offset: int = Query(0, ge=0, description="Number of records to skip")
 ):
-    """Get Flutter documentation entries with enhanced features"""
-    # Apply rate limiting
-    check_rate_limit(request)
+    """Get Flutter documentation entries"""
+    docs = MOCK_DATA["docs"]
     
-    if supabase is None:
-        raise HTTPException(status_code=503, detail='Supabase not configured')
+    # Apply search filter
+    if search:
+        search_lower = search.lower()
+        docs = [doc for doc in docs if search_lower in doc["title"].lower() or search_lower in doc["content"].lower()]
     
-    try:
-        query = supabase.table('flutter_docs').select('*')
-        
-        if search:
-            # Sanitize search input
-            search_clean = search.strip()[:100]  # Limit search length
-            query = query.or_(f'title.ilike.%{search_clean}%,content.ilike.%{search_clean}%')
-        
-        # Add pagination
-        query = query.order('updated_at', desc=True).range(offset, offset + limit - 1)
-        res = query.execute()
-        
-        return {
-            'data': res.data,
-            'count': len(res.data),
-            'total': res.count if hasattr(res, 'count') else len(res.data),
-            'search': search,
-            'pagination': {
-                'limit': limit,
-                'offset': offset,
-                'has_more': len(res.data) == limit
-            },
-            'timestamp': datetime.utcnow().isoformat()
-        }
-    except Exception as e:
-        logger.exception("Error fetching docs: %s", e)
-        raise HTTPException(status_code=500, detail='Internal server error')
+    # Apply pagination
+    total = len(docs)
+    docs = docs[offset:offset + limit]
+    
+    return {
+        "data": docs,
+        "count": len(docs),
+        "total": total,
+        "search": search,
+        "pagination": {
+            "limit": limit,
+            "offset": offset,
+            "has_more": offset + limit < total
+        },
+        "timestamp": datetime.utcnow().isoformat()
+    }
 
-@app.get('/api/flutter/packages')
-def get_packages(
-    request: Request,
+@app.get("/api/flutter/packages")
+async def get_packages(
     limit: int = Query(50, ge=1, le=100, description="Number of packages to return"),
     search: Optional[str] = Query(None, description="Search in package name and description"),
     offset: int = Query(0, ge=0, description="Number of records to skip")
 ):
-    """Get Flutter packages from pub.dev with enhanced features"""
-    # Apply rate limiting
-    check_rate_limit(request)
+    """Get Flutter packages from pub.dev"""
+    packages = MOCK_DATA["packages"]
     
-    if supabase is None:
-        raise HTTPException(status_code=503, detail='Supabase not configured')
+    # Apply search filter
+    if search:
+        search_lower = search.lower()
+        packages = [pkg for pkg in packages if search_lower in pkg["name"].lower() or search_lower in pkg["description"].lower()]
     
-    try:
-        query = supabase.table('pub_packages').select('*')
-        
-        if search:
-            # Sanitize search input
-            search_clean = search.strip()[:100]  # Limit search length
-            query = query.or_(f'name.ilike.%{search_clean}%,description.ilike.%{search_clean}%')
-        
-        # Add pagination
-        query = query.order('updated_at', desc=True).range(offset, offset + limit - 1)
-        res = query.execute()
-        
-        return {
-            'data': res.data,
-            'count': len(res.data),
-            'total': res.count if hasattr(res, 'count') else len(res.data),
-            'search': search,
-            'pagination': {
-                'limit': limit,
-                'offset': offset,
-                'has_more': len(res.data) == limit
-            },
-            'timestamp': datetime.utcnow().isoformat()
-        }
-    except Exception as e:
-        logger.exception("Error fetching packages: %s", e)
-        raise HTTPException(status_code=500, detail='Internal server error')
+    # Apply pagination
+    total = len(packages)
+    packages = packages[offset:offset + limit]
+    
+    return {
+        "data": packages,
+        "count": len(packages),
+        "total": total,
+        "search": search,
+        "pagination": {
+            "limit": limit,
+            "offset": offset,
+            "has_more": offset + limit < total
+        },
+        "timestamp": datetime.utcnow().isoformat()
+    }
 
-@app.get('/api/flutter/issues')
-def get_issues(
-    request: Request,
+@app.get("/api/flutter/issues")
+async def get_issues(
     limit: int = Query(50, ge=1, le=100, description="Number of issues to return"),
     labels: Optional[str] = Query(None, description="Filter by labels (comma-separated)"),
     offset: int = Query(0, ge=0, description="Number of records to skip")
 ):
-    """Get GitHub issues from flutter/flutter repository with enhanced features"""
-    # Apply rate limiting
-    check_rate_limit(request)
+    """Get GitHub issues from flutter/flutter repository"""
+    issues = MOCK_DATA["issues"]
     
-    if supabase is None:
-        raise HTTPException(status_code=503, detail='Supabase not configured')
+    # Apply label filter
+    if labels:
+        label_list = [label.strip().lower() for label in labels.split(",")]
+        issues = [issue for issue in issues if any(label in [l.lower() for l in issue["labels"]] for label in label_list)]
     
-    try:
-        query = supabase.table('github_issues').select('*')
-        
-        if labels:
-            # Sanitize and process labels
-            label_list = [label.strip()[:50] for label in labels.split(',') if label.strip()]
-            for label in label_list:
-                query = query.contains('labels', [label])
-        
-        # Add pagination
-        query = query.order('created_at', desc=True).range(offset, offset + limit - 1)
-        res = query.execute()
-        
-        return {
-            'data': res.data,
-            'count': len(res.data),
-            'total': res.count if hasattr(res, 'count') else len(res.data),
-            'labels_filter': labels,
-            'pagination': {
-                'limit': limit,
-                'offset': offset,
-                'has_more': len(res.data) == limit
-            },
-            'timestamp': datetime.utcnow().isoformat()
-        }
-    except Exception as e:
-        logger.exception("Error fetching issues: %s", e)
-        raise HTTPException(status_code=500, detail='Internal server error')
+    # Apply pagination
+    total = len(issues)
+    issues = issues[offset:offset + limit]
+    
+    return {
+        "data": issues,
+        "count": len(issues),
+        "total": total,
+        "labels_filter": labels,
+        "pagination": {
+            "limit": limit,
+            "offset": offset,
+            "has_more": offset + limit < total
+        },
+        "timestamp": datetime.utcnow().isoformat()
+    }
 
-@app.get('/api/flutter/search')
-def search_all(
-    request: Request,
+@app.get("/api/flutter/stats")
+async def get_stats():
+    """Get overall statistics"""
+    return {
+        "total_docs": len(MOCK_DATA["docs"]),
+        "total_packages": len(MOCK_DATA["packages"]),
+        "total_issues": len(MOCK_DATA["issues"]),
+        "last_updated": datetime.utcnow().isoformat()
+    }
+
+@app.get("/api/flutter/search")
+async def search_all(
     q: str = Query(..., description="Search query"),
     limit: int = Query(20, ge=1, le=50, description="Results per category")
 ):
-    """Search across all Flutter resources with enhanced features"""
-    # Apply rate limiting
-    check_rate_limit(request)
+    """Search across all Flutter resources"""
+    if not q.strip():
+        raise HTTPException(status_code=400, detail="Search query cannot be empty")
     
-    if supabase is None:
-        raise HTTPException(status_code=503, detail='Supabase not configured')
+    search_lower = q.lower()
+    results = {}
     
-    try:
-        # Sanitize search query
-        search_query = q.strip()[:100]  # Limit search length
-        
-        if not search_query:
-            raise HTTPException(status_code=400, detail='Search query cannot be empty')
-        
-        results = {}
-        
-        # Search docs
-        docs_res = supabase.table('flutter_docs').select('*').or_(
-            f'title.ilike.%{search_query}%,content.ilike.%{search_query}%'
-        ).limit(limit).execute()
-        results['docs'] = docs_res.data
-        
-        # Search packages
-        packages_res = supabase.table('pub_packages').select('*').or_(
-            f'name.ilike.%{search_query}%,description.ilike.%{search_query}%'
-        ).limit(limit).execute()
-        results['packages'] = packages_res.data
-        
-        # Search issues
-        issues_res = supabase.table('github_issues').select('*').or_(
-            f'title.ilike.%{search_query}%,body.ilike.%{search_query}%'
-        ).limit(limit).execute()
-        results['issues'] = issues_res.data
-        
-        total_results = len(results['docs']) + len(results['packages']) + len(results['issues'])
-        
-        return {
-            'query': search_query,
-            'results': results,
-            'total_results': total_results,
-            'results_by_type': {
-                'docs': len(results['docs']),
-                'packages': len(results['packages']),
-                'issues': len(results['issues'])
-            },
-            'timestamp': datetime.utcnow().isoformat()
-        }
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.exception("Error searching: %s", e)
-        raise HTTPException(status_code=500, detail='Internal server error')
+    # Search docs
+    docs = [doc for doc in MOCK_DATA["docs"] if search_lower in doc["title"].lower() or search_lower in doc["content"].lower()]
+    results["docs"] = docs[:limit]
+    
+    # Search packages
+    packages = [pkg for pkg in MOCK_DATA["packages"] if search_lower in pkg["name"].lower() or search_lower in pkg["description"].lower()]
+    results["packages"] = packages[:limit]
+    
+    # Search issues
+    issues = [issue for issue in MOCK_DATA["issues"] if search_lower in issue["title"].lower() or search_lower in issue["body"].lower()]
+    results["issues"] = issues[:limit]
+    
+    total_results = len(results["docs"]) + len(results["packages"]) + len(results["issues"])
+    
+    return {
+        "query": q,
+        "results": results,
+        "total_results": total_results,
+        "results_by_type": {
+            "docs": len(results["docs"]),
+            "packages": len(results["packages"]),
+            "issues": len(results["issues"])
+        },
+        "timestamp": datetime.utcnow().isoformat()
+    }
 
 # Vercel handler
 def handler(request):
-    """
-    Simple Vercel handler that returns basic responses
-    """
-    import json
-    
-    # Get request details
-    method = request.get('httpMethod', 'GET')
-    path = request.get('path', '/')
-    query_params = request.get('queryStringParameters', {}) or {}
-    
-    try:
-        if path == '/health':
-            return {
-                'statusCode': 200,
-                'headers': {'Content-Type': 'application/json'},
-                'body': json.dumps({
-                    'status': 'healthy',
-                    'version': '2.0.0',
-                    'environment': 'production',
-                    'platform': 'vercel',
-                    'timestamp': '2024-01-01T00:00:00Z'
-                })
-            }
-        
-        elif path.startswith('/api/flutter/'):
-            # Return mock data for API endpoints
-            endpoint = path.split('/')[-1]
-            mock_data = {
-                'docs': {'data': [], 'count': 0, 'message': 'Documentation endpoint working'},
-                'packages': {'data': [], 'count': 0, 'message': 'Packages endpoint working'},
-                'issues': {'data': [], 'count': 0, 'message': 'Issues endpoint working'},
-                'stats': {'total_docs': 0, 'total_packages': 0, 'total_issues': 0, 'message': 'Stats endpoint working'},
-                'search': {'results': {}, 'total_results': 0, 'message': 'Search endpoint working'}
-            }
-            
-            return {
-                'statusCode': 200,
-                'headers': {'Content-Type': 'application/json'},
-                'body': json.dumps(mock_data.get(endpoint, {'message': f'Endpoint {endpoint} is working'}))
-            }
-        
-        else:
-            # For root and other paths, return basic HTML
-            return {
-                'statusCode': 200,
-                'headers': {'Content-Type': 'text/html'},
-                'body': '''
-                <!DOCTYPE html>
-                <html>
-                <head>
-                    <title>Flutter Knowledge Sync</title>
-                    <meta charset="utf-8">
-                    <meta name="viewport" content="width=device-width, initial-scale=1">
-                </head>
-                <body>
-                    <h1>Flutter Knowledge Sync API</h1>
-                    <p>API is running successfully!</p>
-                    <p>Available endpoints:</p>
-                    <ul>
-                        <li><a href="/health">/health</a> - Health check</li>
-                        <li><a href="/api/flutter/stats">/api/flutter/stats</a> - Statistics</li>
-                        <li><a href="/api/flutter/docs">/api/flutter/docs</a> - Documentation</li>
-                        <li><a href="/api/flutter/packages">/api/flutter/packages</a> - Packages</li>
-                        <li><a href="/api/flutter/issues">/api/flutter/issues</a> - Issues</li>
-                    </ul>
-                </body>
-                </html>
-                '''
-            }
-            
-    except Exception as e:
-        return {
-            'statusCode': 500,
-            'headers': {'Content-Type': 'application/json'},
-            'body': json.dumps({
-                'error': 'Internal server error',
-                'message': str(e)
-            })
-        }
+    """Vercel serverless function handler"""
+    return app

@@ -1,34 +1,32 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import Dashboard from './components/Dashboard';
 import Header from './components/Header';
-import Sidebar from './components/Sidebar';
-import ErrorBoundary from './components/ErrorBoundary';
+import Dashboard from './components/Dashboard';
+import DocsPage from './components/DocsPage';
+import PackagesPage from './components/PackagesPage';
+import IssuesPage from './components/IssuesPage';
+import SearchPage from './components/SearchPage';
 import { DataProvider } from './context/DataContext';
+import './App.css';
 
 function App() {
   return (
-    <ErrorBoundary>
-      <DataProvider>
-        <Router>
-          <div className="min-h-screen bg-gray-50">
-            <Header />
-            <div className="flex">
-              <Sidebar />
-              <main className="flex-1 p-6 ml-64">
-                <Routes>
-                  <Route path="/" element={<Dashboard />} />
-                  <Route path="/docs" element={<Dashboard tab="docs" />} />
-                  <Route path="/packages" element={<Dashboard tab="packages" />} />
-                  <Route path="/issues" element={<Dashboard tab="issues" />} />
-                  <Route path="/search" element={<Dashboard tab="search" />} />
-                </Routes>
-              </main>
-            </div>
-          </div>
-        </Router>
-      </DataProvider>
-    </ErrorBoundary>
+    <DataProvider>
+      <Router>
+        <div className="App">
+          <Header />
+          <main className="main-content">
+            <Routes>
+              <Route path="/" element={<Dashboard />} />
+              <Route path="/docs" element={<DocsPage />} />
+              <Route path="/packages" element={<PackagesPage />} />
+              <Route path="/issues" element={<IssuesPage />} />
+              <Route path="/search" element={<SearchPage />} />
+            </Routes>
+          </main>
+        </div>
+      </Router>
+    </DataProvider>
   );
 }
 
