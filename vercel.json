@@ -45,10 +45,5 @@
   ],
   "env": {
     "ENVIRONMENT": "production"
-  },
-  "functions": {
-    "api/index.py": {
-      "maxDuration": 30
-    }
   }
 }
