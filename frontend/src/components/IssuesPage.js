@@ -8,7 +8,7 @@ function IssuesPage() {
 
   useEffect(() => {
     fetchIssues(50, searchTerm);
-  }, [searchTerm]);
+  }, [searchTerm, fetchIssues]);
 
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString('en-US', {

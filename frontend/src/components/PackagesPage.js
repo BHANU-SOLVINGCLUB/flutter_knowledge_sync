@@ -8,7 +8,7 @@ function PackagesPage() {
 
   useEffect(() => {
     fetchPackages(50, searchTerm);
-  }, [searchTerm]);
+  }, [searchTerm, fetchPackages]);
 
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString('en-US', {
